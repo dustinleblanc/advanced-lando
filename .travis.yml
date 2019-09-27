@@ -1,0 +1,63 @@
+language: php
+dist: xenial
+php:
+  - 7.3
+cache:
+  directories:
+    - $HOME/.composer/cache/files
+    - $HOME/.composer/cache/repo
+    - $TMPDIR/phpstan/cache
+services:
+  - docker
+before_install:
+
+  # Install Hyperdrive
+  - sudo apt-get -y update
+  - sudo apt-get -y install cgroup-bin curl
+  - sudo bash -c "curl -Ls https://github.com/lando/hyperdrive/releases/download/v0.5.4/hyperdrive > /usr/local/bin/hyperdrive"
+  - sudo chmod +x /usr/local/bin/hyperdrive
+
+  # Remove old certs
+  - rm -f /home/travis/.ssh/id_rsa
+  - rm -f /home/travis/.ssh/id_rsa.pub
+
+script:
+  # Add Repo key to prevent hyperdrive install errors.
+  - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 6B05F25D762E3157
+
+  # Setup hyperdrive
+  - hyperdrive -y --name "James T. Kirk" --email kirk@enterprise.mil
+
+  # Start Lando
+  - lando start -v
+
+  # Check code standards
+  # - lando test
+
+  # Sleep for 10 seconds so certs can load
+  - sleep 10
+
+  # Do platform stuff
+  # Verify we are logged in
+  # - lando platform auth:info
+
+  # Generate and post an ssh key and then wait because Platform seems to
+  # refresh keys every 90 seconds
+  # NOTE: If you are getting consistent DB pull failures then you might want to increase the sleep
+  # - lando platform ssh-key:add -y
+  # - sleep 200
+
+  # Dump and import the database
+  # - lando platform db:dump --gzip --file=dump.sql.gz --project=$PLATFORMSH_PROJECT_ID --environment=master --identity-file=/var/www/.ssh/id_rsa --relationship=database
+  # - lando db-import dump.sql.gz
+  # - rm -f dump.sql.gz
+
+  # This could be potentially problematic if someone adds their own ssh key after we generate one above
+  # and before we run the below
+  # - lando ssh -c "/var/www/.platformsh/bin/platform ssh-key:delete \$(/var/www/.platformsh/bin/platform ssh-keys --format=csv | tail -1 | cut -d ',' -f 1)"
+
+  # Check to see if we succeeded
+  # - cd docroot
+  # - lando drush status && lando drush cr
+  # - lando drush cim -y
+  # - lando drush updb -y
