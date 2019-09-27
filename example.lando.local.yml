@@ -1,0 +1,4 @@
+tooling:
+  drush:
+    service: appserver
+    cmd: /app/drupal/vendor/bin/drush --uri=my-lando-app.lndo.site

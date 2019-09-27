@@ -1,0 +1,60 @@
+name: my-lando-app
+recipe: drupal8
+excludes:
+  - drupal/drush
+  - scripts
+  - drupal/vendor
+  - drupal/web/core
+  - drupal/web/modules/contrib
+  - drupal/web/profiles/contrib
+  - drupal/web/sites/default/files
+  - drupal/web/themes/contrib
+config:
+  webroot: drupal/web
+env_file:
+  - .env
+
+proxy:
+  node:
+    - bs-my-lando-app.lndo.site:3000
+services:
+  node:
+    type: node
+    command: cd /app/drupal/web/themes/custom/magic && yarn watch
+    build:
+      - cd /app/drupal/web/themes/custom/magic && yarn install
+      - cd /app/drupal/web/themes/custom/magic && yarn dev
+  appserver:
+    build_as_root:
+      - apt update -y && apt install vim -y
+    build:
+      - "mkdir -p /var/www/.platformsh/bin"
+      - "curl -fsSL -o /var/www/.platformsh/bin/platform https://github.com/platformsh/platformsh-cli/releases/download/v3.40.2/platform.phar"
+      - "chmod ug+x /var/www/.platformsh/bin/platform"
+      - "cd /app/drupal && composer install -n"
+    overrides:
+      environment:
+        PLATFORMSH_CLI_TOKEN: "$PLATFORMSH_CLI_TOKEN"
+        PLATFORMSH_PROJECT_ID: "$PLATFORM_PROJECT_ID"
+        MYSQL_HOSTNAME: database
+        MYSQL_PASSWORD: drupal8
+        MYSQL_DATABASE: drupal8
+        MYSQL_USER: drupal8
+        MYSQL_PORT: 3306
+  # Add in custom service from our custom plugin
+  elixir:
+    type: elixir
+tooling:
+  phpunit:
+    service: appserver
+    cmd: /app/drupal/vendor/bin/phpunit
+  pull-platform:
+    service: appserver
+    description: Pull the prod instance
+    cmd:
+      - appserver: /var/www/.platformsh/bin/platform auth:info || /var/www/.platformsh/bin/platform auth:login
+      - appserver: /var/www/.platformsh/bin/platform db:dump --gzip --file=/app/dump.sql.gz --environment=master
+      - database: /app/scripts/lando/import-db.sh
+      - appserver: rm -f /app/dump.sql.gz
+      - appserver: mkdir -p /app/drupal/web/sites/default/files
+      - appserver: /var/www/.platformsh/bin/platform mount:download --mount docroot/sites/default/files --target /app/drupal/web/sites/default/files --environment master

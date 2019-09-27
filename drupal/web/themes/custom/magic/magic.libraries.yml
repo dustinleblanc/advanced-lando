@@ -1,0 +1,10 @@
+style:
+  version: VERSION
+  css:
+    theme:
+      assets/css/magic.style.css: {}
+  js:
+    assets/js/magic.script.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
